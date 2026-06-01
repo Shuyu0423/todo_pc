@@ -1,4 +1,6 @@
 todo_app/build/
+todo_app/dist/
+todo_app/package/
 *.exe
 *.dll
 *.obj
