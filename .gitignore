@@ -1,0 +1,5 @@
+todo_app/build/
+*.exe
+*.dll
+*.obj
+*.log

@@ -1,0 +1,15 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}/todo_app",
+    "cmake.generator": "Ninja",
+    "cmake.configureEnvironment": {
+        "Path": "D:/Qt/Tools/mingw1310_64/bin;D:/Qt/Tools/Ninja;D:/Qt/6.10.3/mingw_64/bin;${env:Path}"
+    },
+    "cmake.buildEnvironment": {
+        "Path": "D:/Qt/Tools/mingw1310_64/bin;D:/Qt/Tools/Ninja;D:/Qt/6.10.3/mingw_64/bin;${env:Path}"
+    },
+    "cmake.configureSettings": {
+        "CMAKE_PREFIX_PATH": "D:/Qt/6.10.3/mingw_64",
+        "CMAKE_CXX_COMPILER": "D:/Qt/Tools/mingw1310_64/bin/g++.exe",
+        "CMAKE_C_COMPILER": "D:/Qt/Tools/mingw1310_64/bin/gcc.exe"
+    }
+}

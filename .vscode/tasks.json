@@ -1,0 +1,40 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure Todo App",
+            "type": "shell",
+            "command": "cmake -S .\\todo_app -B .\\todo_app\\build -G Ninja -DCMAKE_PREFIX_PATH=D:\\Qt\\6.10.3\\mingw_64 -DCMAKE_CXX_COMPILER=D:\\Qt\\Tools\\mingw1310_64\\bin\\g++.exe -DCMAKE_C_COMPILER=D:\\Qt\\Tools\\mingw1310_64\\bin\\gcc.exe",
+            "options": {
+                "env": {
+                    "Path": "D:\\Qt\\Tools\\mingw1310_64\\bin;D:\\Qt\\Tools\\Ninja;D:\\Qt\\6.10.3\\mingw_64\\bin;${env:Path}"
+                }
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Build Todo App",
+            "type": "shell",
+            "command": "cmake --build .\\todo_app\\build",
+            "options": {
+                "env": {
+                    "Path": "D:\\Qt\\Tools\\mingw1310_64\\bin;D:\\Qt\\Tools\\Ninja;D:\\Qt\\6.10.3\\mingw_64\\bin;${env:Path}"
+                }
+            },
+            "dependsOn": "Configure Todo App",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Run Todo App",
+            "type": "shell",
+            "command": ".\\todo_app\\build\\todo_app.exe",
+            "options": {
+                "env": {
+                    "Path": "D:\\Qt\\Tools\\mingw1310_64\\bin;D:\\Qt\\Tools\\Ninja;D:\\Qt\\6.10.3\\mingw_64\\bin;${env:Path}"
+                }
+            },
+            "dependsOn": "Build Todo App",
+            "problemMatcher": []
+        }
+    ]
+}
