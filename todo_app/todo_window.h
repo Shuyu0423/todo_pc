@@ -5,6 +5,8 @@
 #include <QSqlDatabase>
 
 class QLabel;
+class QCloseEvent;
+class QEvent;
 class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
@@ -16,6 +18,7 @@ class QSpinBox;
 class QTimer;
 class QWidget;
 
+class FloatingFocusWidget;
 class ScheduleTable;
 class StudyCalendarWidget;
 struct ScheduleSelection;
@@ -23,6 +26,10 @@ struct ScheduleSelection;
 class TodoWindow : public QMainWindow {
 public:
     explicit TodoWindow(QWidget *parent = nullptr);
+
+protected:
+    void changeEvent(QEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     QWidget *createTasksPanel();
@@ -59,6 +66,9 @@ private:
     void resetFocusTimer();
     void tickFocusTimer();
     void updateTimerDisplay();
+    void showFloatingFocus();
+    void restoreFromFloating();
+    void syncFloatingFocus();
     void logFocusSession();
     void updateTodayStudy();
     void updateStudyCalendar();
@@ -112,6 +122,7 @@ private:
     ScheduleTable *scheduleTable = nullptr;
     StudyCalendarWidget *studyCalendar = nullptr;
     QTimer *focusTimer = nullptr;
+    FloatingFocusWidget *floatingFocus = nullptr;
     QSqlDatabase database;
 
     int focusTotalSeconds = 25 * 60;

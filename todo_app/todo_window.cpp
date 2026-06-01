@@ -1,10 +1,12 @@
 #include "todo_window.h"
 
+#include "floating_focus_widget.h"
 #include "schedule_table.h"
 #include "study_calendar_widget.h"
 
 #include <QColor>
 #include <QComboBox>
+#include <QCloseEvent>
 #include <QCoreApplication>
 #include <QDate>
 #include <QDateEdit>
@@ -38,6 +40,7 @@
 #include <QTableWidgetItem>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QWindowStateChangeEvent>
 
 #include <algorithm>
 
@@ -63,6 +66,9 @@ TodoWindow::TodoWindow(QWidget *parent) : QMainWindow(parent) {
 
     setCentralWidget(root);
     applyStyle();
+    floatingFocus = new FloatingFocusWidget();
+    floatingFocus->setRestoreHandler([this] { restoreFromFloating(); });
+    floatingFocus->setToggleHandler([this] { toggleFocusTimer(); });
     initDatabase();
     connectUi();
     loadTasks();
@@ -72,6 +78,19 @@ TodoWindow::TodoWindow(QWidget *parent) : QMainWindow(parent) {
     updateTaskDetail();
     updateTodayStudy();
     updateStudyCalendar();
+    syncFloatingFocus();
+}
+
+void TodoWindow::changeEvent(QEvent *event) {
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange && isMinimized()) {
+        QTimer::singleShot(0, this, [this] { showFloatingFocus(); });
+    }
+}
+
+void TodoWindow::closeEvent(QCloseEvent *event) {
+    if (floatingFocus) floatingFocus->close();
+    QMainWindow::closeEvent(event);
 }
 
 QWidget *TodoWindow::createSidebar() {
@@ -634,6 +653,7 @@ void TodoWindow::updateFocusTask() {
         text = "未命名任务";
     }
     focusTaskLabel->setText(text);
+    syncFloatingFocus();
 }
 
 void TodoWindow::updateTaskDetail() {
@@ -778,6 +798,7 @@ void TodoWindow::toggleFocusTimer() {
         startPauseButton->setText("继续");
         focusStateLabel->setText("已暂停");
         minutesInput->setEnabled(true);
+        syncFloatingFocus();
         return;
     }
 
@@ -790,6 +811,7 @@ void TodoWindow::toggleFocusTimer() {
     startPauseButton->setText("暂停");
     focusStateLabel->setText("专注中");
     minutesInput->setEnabled(false);
+    syncFloatingFocus();
 }
 
 void TodoWindow::resetFocusTimer() {
@@ -807,6 +829,7 @@ void TodoWindow::resetFocusTimer() {
         focusStateLabel->setText("准备中");
     }
     updateTimerDisplay();
+    syncFloatingFocus();
 }
 
 void TodoWindow::tickFocusTimer() {
@@ -824,6 +847,7 @@ void TodoWindow::tickFocusTimer() {
         startPauseButton->setText("开始");
         focusStateLabel->setText("已完成");
         minutesInput->setEnabled(true);
+        syncFloatingFocus();
         QMessageBox::information(this, "专注完成", "做得好，这次专注已经完成。");
     }
 }
@@ -838,6 +862,31 @@ void TodoWindow::updateTimerDisplay() {
     const int elapsed = focusTotalSeconds - focusRemainingSeconds;
     const int progress = focusTotalSeconds > 0 ? elapsed * 1000 / focusTotalSeconds : 0;
     focusProgress->setValue(progress);
+    syncFloatingFocus();
+}
+
+void TodoWindow::showFloatingFocus() {
+    if (!floatingFocus) return;
+    syncFloatingFocus();
+    hide();
+    floatingFocus->moveToScreenCorner();
+    floatingFocus->show();
+    floatingFocus->raise();
+}
+
+void TodoWindow::restoreFromFloating() {
+    if (!floatingFocus) return;
+    floatingFocus->hide();
+    showNormal();
+    activateWindow();
+    raise();
+}
+
+void TodoWindow::syncFloatingFocus() {
+    if (!floatingFocus || !timerLabel) return;
+    floatingFocus->setTaskText(currentFocusTaskText());
+    floatingFocus->setTimeText(timerLabel->text());
+    floatingFocus->setRunning(focusRunning);
 }
 
 void TodoWindow::logFocusSession() {

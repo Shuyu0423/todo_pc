@@ -10,6 +10,8 @@ find_package(Qt6 REQUIRED COMPONENTS Sql Widgets)
 qt_standard_project_setup()
 
 qt_add_executable(todo_app
+    floating_focus_widget.cpp
+    floating_focus_widget.h
     main.cpp
     schedule_table.cpp
     schedule_table.h
