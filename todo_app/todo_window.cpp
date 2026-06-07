@@ -127,11 +127,23 @@ QWidget *TodoWindow::createSidebar() {
     auto *listTitle = new QLabel("清单");
     listTitle->setObjectName("SidebarSection");
     layout->addWidget(listTitle);
-    const QStringList lists = {"●  工作          23", "●  学习          14", "●  个人            9", "●  购物清单      7", "●  旅行计划      6"};
-    for (const QString &text : lists) {
-        auto *label = new QLabel(text);
-        label->setObjectName("SidebarList");
-        layout->addWidget(label);
+    const QList<QPair<QString, QLabel **>> categoryRows = {
+        {"●  工作", &workCountLabel},
+        {"●  学习", &studyCountLabel},
+        {"●  个人", &personalCountLabel},
+        {"●  购物清单", &shoppingCountLabel},
+        {"●  旅行计划", &travelCountLabel}
+    };
+    for (const auto &row : categoryRows) {
+        auto *line = new QHBoxLayout();
+        auto *name = new QLabel(row.first);
+        name->setObjectName("SidebarList");
+        auto *count = new QLabel("0");
+        count->setObjectName("SidebarList");
+        line->addWidget(name, 1);
+        line->addWidget(count);
+        layout->addLayout(line);
+        *row.second = count;
     }
 
     layout->addStretch(1);
@@ -161,11 +173,18 @@ QWidget *TodoWindow::createTasksPanel() {
 
     auto *filters = new QHBoxLayout();
     filters->setSpacing(16);
-    for (const QString &text : {"全部  8", "重要且紧急  2", "重要不紧急  3", "其他任务  3"}) {
-        auto *filter = new QLabel(text);
-        filter->setObjectName(text.startsWith("全部") ? "FilterActive" : "Filter");
-        filters->addWidget(filter);
-    }
+    allFilterLabel = new QLabel("全部 0");
+    urgentFilterLabel = new QLabel("今日 0");
+    importantFilterLabel = new QLabel("本周 0");
+    otherFilterLabel = new QLabel("已完成 0");
+    allFilterLabel->setObjectName("FilterActive");
+    urgentFilterLabel->setObjectName("Filter");
+    importantFilterLabel->setObjectName("Filter");
+    otherFilterLabel->setObjectName("Filter");
+    filters->addWidget(allFilterLabel);
+    filters->addWidget(urgentFilterLabel);
+    filters->addWidget(importantFilterLabel);
+    filters->addWidget(otherFilterLabel);
     filters->addStretch(1);
     layout->addLayout(filters);
 
@@ -227,6 +246,10 @@ QWidget *TodoWindow::createMetricCard(const QString &title, const QString &value
     auto *captionLabel = new QLabel(caption);
     captionLabel->setObjectName("MutedText");
     layout->addWidget(captionLabel);
+    if (title == "今日进度") progressMetricCaptionLabel = captionLabel;
+    if (title == "今日专注") focusMetricCaptionLabel = captionLabel;
+    if (title == "连续打卡") streakMetricCaptionLabel = captionLabel;
+    if (title == "预计用时") estimateMetricCaptionLabel = captionLabel;
     return card;
 }
 
@@ -257,10 +280,10 @@ QWidget *TodoWindow::createDashboardPanel() {
 
     auto *metrics = new QHBoxLayout();
     metrics->setSpacing(12);
-    metrics->addWidget(createMetricCard("今日进度", "60%", "6 / 10 已完成", "#5667f2"), 1);
-    metrics->addWidget(createMetricCard("今日专注", "4.5 h", "专注时间", "#26a47b"), 1);
-    metrics->addWidget(createMetricCard("连续打卡", "12 天", "最佳记录 18 天", "#f29d49"), 1);
-    metrics->addWidget(createMetricCard("预计用时", "4.5 h", "剩余 2.1 h", "#6574d9"), 1);
+    metrics->addWidget(createMetricCard("今日进度", "0%", "0 / 0 已完成", "#5667f2"), 1);
+    metrics->addWidget(createMetricCard("今日专注", "0.0 h", "0 分钟", "#26a47b"), 1);
+    metrics->addWidget(createMetricCard("连续打卡", "0 天", "最佳记录 0 天", "#f29d49"), 1);
+    metrics->addWidget(createMetricCard("预计用时", "0.0 h", "剩余 0 分钟", "#6574d9"), 1);
     layout->addLayout(metrics);
 
     layout->addWidget(createTasksPanel(), 3);
@@ -639,6 +662,8 @@ void TodoWindow::updateStatus() {
     deleteButton->setEnabled(list->currentItem() != nullptr);
     clearDoneButton->setEnabled(completed > 0);
     updateDashboardMetrics();
+    updateSidebarCounts();
+    updateFilterLabels();
 }
 
 void TodoWindow::updateFocusTask() {
@@ -756,8 +781,14 @@ void TodoWindow::updateDashboardMetrics() {
     if (progressMetricLabel) {
         progressMetricLabel->setText(total > 0 ? QString("%1%").arg(completed * 100 / total) : "0%");
     }
+    if (progressMetricCaptionLabel) {
+        progressMetricCaptionLabel->setText(QString("%1 / %2 已完成").arg(completed).arg(total));
+    }
     if (estimateMetricLabel) {
         estimateMetricLabel->setText(QString::number(remainingMinutes / 60.0, 'f', 1) + " h");
+    }
+    if (estimateMetricCaptionLabel) {
+        estimateMetricCaptionLabel->setText(QString("剩余 %1 分钟").arg(remainingMinutes));
     }
     if (todayNavButton) todayNavButton->setText(QString("◉  今天                 %1").arg(total));
     if (tomorrowNavButton) tomorrowNavButton->setText(QString("□  明天                 %1").arg(tomorrowCount));
@@ -777,10 +808,59 @@ void TodoWindow::updateDashboardMetrics() {
         while (query.next()) studiedDates.insert(QDate::fromString(query.value(0).toString(), Qt::ISODate));
     }
     if (focusMetricLabel) focusMetricLabel->setText(QString::number(totalSeconds / 3600.0, 'f', 1) + " h");
+    if (focusMetricCaptionLabel) focusMetricCaptionLabel->setText(QString("%1 分钟").arg(totalSeconds / 60));
 
     int streak = 0;
     for (QDate date = today; studiedDates.contains(date); date = date.addDays(-1)) ++streak;
+    int bestStreak = 0;
+    int currentRun = 0;
+    QList<QDate> sortedDates = studiedDates.values();
+    std::sort(sortedDates.begin(), sortedDates.end());
+    QDate previous;
+    for (const QDate &date : sortedDates) {
+        if (!previous.isValid() || previous.daysTo(date) == 1) {
+            ++currentRun;
+        } else {
+            currentRun = 1;
+        }
+        bestStreak = std::max(bestStreak, currentRun);
+        previous = date;
+    }
     if (streakMetricLabel) streakMetricLabel->setText(QString("%1 天").arg(streak));
+    if (streakMetricCaptionLabel) streakMetricCaptionLabel->setText(QString("最佳记录 %1 天").arg(bestStreak));
+}
+
+void TodoWindow::updateSidebarCounts() {
+    int work = 0, study = 0, personal = 0, shopping = 0, travel = 0;
+    for (int row = 0; row < list->count(); ++row) {
+        const QString category = list->item(row)->data(CategoryRole).toString();
+        if (category == "工作") ++work;
+        else if (category == "学习") ++study;
+        else if (category == "个人") ++personal;
+        else if (category == "购物清单") ++shopping;
+        else if (category == "旅行计划") ++travel;
+    }
+    if (workCountLabel) workCountLabel->setText(QString::number(work));
+    if (studyCountLabel) studyCountLabel->setText(QString::number(study));
+    if (personalCountLabel) personalCountLabel->setText(QString::number(personal));
+    if (shoppingCountLabel) shoppingCountLabel->setText(QString::number(shopping));
+    if (travelCountLabel) travelCountLabel->setText(QString::number(travel));
+}
+
+void TodoWindow::updateFilterLabels() {
+    int todayCount = 0, weekCount = 0, completedCount = 0;
+    const QDate today = QDate::currentDate();
+    for (int row = 0; row < list->count(); ++row) {
+        const auto *item = list->item(row);
+        const QDate dueDate = QDate::fromString(item->data(DueDateRole).toString(), Qt::ISODate);
+        if (dueDate == today) ++todayCount;
+        if (dueDate >= today && dueDate <= today.addDays(6)) ++weekCount;
+        if (item->checkState() == Qt::Checked) ++completedCount;
+    }
+    if (allFilterLabel) allFilterLabel->setText(QString("全部 %1").arg(list->count()));
+    if (urgentFilterLabel) urgentFilterLabel->setText(QString("今日 %1").arg(todayCount));
+    if (importantFilterLabel) importantFilterLabel->setText(QString("本周 %1").arg(weekCount));
+    if (otherFilterLabel) otherFilterLabel->setText(QString("已完成 %1").arg(completedCount));
 }
 
 QString TodoWindow::currentFocusTaskText() const {

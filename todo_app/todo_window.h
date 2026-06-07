@@ -60,6 +60,8 @@ private:
     void toggleSelectedTaskCompletion();
     void applyTaskFilter();
     void updateDashboardMetrics();
+    void updateSidebarCounts();
+    void updateFilterLabels();
     QString currentFocusTaskText() const;
 
     void toggleFocusTimer();
@@ -101,6 +103,19 @@ private:
     QLabel *focusMetricLabel = nullptr;
     QLabel *streakMetricLabel = nullptr;
     QLabel *estimateMetricLabel = nullptr;
+    QLabel *progressMetricCaptionLabel = nullptr;
+    QLabel *focusMetricCaptionLabel = nullptr;
+    QLabel *streakMetricCaptionLabel = nullptr;
+    QLabel *estimateMetricCaptionLabel = nullptr;
+    QLabel *allFilterLabel = nullptr;
+    QLabel *urgentFilterLabel = nullptr;
+    QLabel *importantFilterLabel = nullptr;
+    QLabel *otherFilterLabel = nullptr;
+    QLabel *workCountLabel = nullptr;
+    QLabel *studyCountLabel = nullptr;
+    QLabel *personalCountLabel = nullptr;
+    QLabel *shoppingCountLabel = nullptr;
+    QLabel *travelCountLabel = nullptr;
     QLabel *focusTaskLabel = nullptr;
     QLabel *timerLabel = nullptr;
     QLabel *focusStateLabel = nullptr;
