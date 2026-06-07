@@ -276,6 +276,21 @@ QWidget *TodoWindow::createMetricCard(const QString &title, const QString &value
     return card;
 }
 
+QWidget *TodoWindow::createDetailFieldRow(const QString &label, QWidget *editor) {
+    auto *row = new QFrame();
+    row->setObjectName("DetailFieldRow");
+    auto *layout = new QHBoxLayout(row);
+    layout->setContentsMargins(14, 9, 12, 9);
+    layout->setSpacing(12);
+
+    auto *labelWidget = new QLabel(label);
+    labelWidget->setObjectName("DetailFieldLabel");
+    labelWidget->setFixedWidth(58);
+    layout->addWidget(labelWidget);
+    layout->addWidget(editor, 1);
+    return row;
+}
+
 QWidget *TodoWindow::createDashboardPanel() {
     auto *dashboard = new QFrame();
     dashboard->setObjectName("Dashboard");
@@ -351,19 +366,19 @@ QWidget *TodoWindow::createDetailPanel() {
     detailTitleInput = new QLineEdit();
     detailTitleInput->setObjectName("DetailInput");
     detailTitleInput->setPlaceholderText("任务标题");
-    layout->addWidget(detailTitleInput);
+    layout->addWidget(createDetailFieldRow("标题", detailTitleInput));
 
     detailDateInput = new QDateEdit(QDate::currentDate());
     detailDateInput->setObjectName("DetailInput");
     detailDateInput->setCalendarPopup(true);
     detailDateInput->setDisplayFormat("yyyy-MM-dd");
     detailDateInput->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    layout->addWidget(detailDateInput);
+    layout->addWidget(createDetailFieldRow("日期", detailDateInput));
 
     detailCategoryInput = new QComboBox();
     detailCategoryInput->setObjectName("DetailCombo");
     detailCategoryInput->addItems({"工作", "学习", "个人", "购物清单", "旅行计划"});
-    layout->addWidget(detailCategoryInput);
+    layout->addWidget(createDetailFieldRow("清单", detailCategoryInput));
 
     detailEstimateInput = new QSpinBox();
     detailEstimateInput->setObjectName("DetailInput");
@@ -371,11 +386,13 @@ QWidget *TodoWindow::createDetailPanel() {
     detailEstimateInput->setSingleStep(5);
     detailEstimateInput->setSuffix(" 分钟");
     detailEstimateInput->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    layout->addWidget(detailEstimateInput);
+    layout->addWidget(createDetailFieldRow("预计", detailEstimateInput));
 
     detailSaveButton = new QPushButton("保存任务详情");
     detailSaveButton->setObjectName("PrimaryButton");
+    detailSaveButton->setMinimumHeight(44);
     detailToggleButton = new QPushButton("标记为已完成");
+    detailToggleButton->setMinimumHeight(42);
     layout->addWidget(detailSaveButton);
     layout->addWidget(detailToggleButton);
 
@@ -1536,6 +1553,16 @@ void TodoWindow::applyStyle() {
             color: #67708a;
             font-size: 13px;
         }
+        #DetailFieldRow {
+            background: #ffffff;
+            border: 1px solid #e8edf6;
+            border-radius: 12px;
+        }
+        #DetailFieldLabel {
+            color: #8c94a9;
+            font-size: 13px;
+            font-weight: 700;
+        }
         #Tag {
             background: #eef8f3;
             border: 1px solid #d8f0e4;
@@ -1597,17 +1624,17 @@ void TodoWindow::applyStyle() {
             padding: 8px 14px;
         }
         QLineEdit#DetailInput, QSpinBox#DetailInput, QDateEdit#DetailInput, QComboBox#DetailCombo {
-            background: #ffffff;
-            border: 1px solid #e5eaf5;
-            border-radius: 11px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
             color: #232842;
             font-size: 14px;
-            min-height: 32px;
-            padding: 7px 14px;
+            min-height: 24px;
+            padding: 2px 4px;
         }
         QLineEdit#DetailInput:focus, QSpinBox#DetailInput:focus, QDateEdit#DetailInput:focus, QComboBox#DetailCombo:focus {
-            border: 1px solid #9aa4ff;
-            background: #fbfcff;
+            border: none;
+            background: transparent;
         }
         QComboBox#DetailCombo::drop-down {
             border: none;
@@ -1737,13 +1764,14 @@ void TodoWindow::applyStyle() {
         QCheckBox::indicator {
             width: 18px;
             height: 18px;
-            border-radius: 5px;
-            border: 1px solid #d9deea;
-            background: #ffffff;
+            border-radius: 4px;
+            border: 1px solid #d6dceb;
+            background: #fbfcff;
         }
         QCheckBox::indicator:checked {
             background: #5262f5;
             border: 1px solid #5262f5;
+            image: none;
         }
         QTableWidget::item:selected {
             background: #eef1ff;
