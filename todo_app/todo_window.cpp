@@ -72,6 +72,7 @@ TodoWindow::TodoWindow(QWidget *parent) : QMainWindow(parent) {
     floatingFocus = new FloatingFocusWidget();
     floatingFocus->setRestoreHandler([this] { restoreFromFloating(); });
     floatingFocus->setToggleHandler([this] { toggleFocusTimer(); });
+    floatingFocus->setResetHandler([this] { resetFocusTimer(); });
     initDatabase();
     connectUi();
     loadTasks();
@@ -236,7 +237,9 @@ QWidget *TodoWindow::createTasksPanel() {
     bottomRow->addWidget(statusLabel, 1);
 
     deleteButton = new QPushButton("删除");
+    deleteButton->setObjectName("GhostButton");
     clearDoneButton = new QPushButton("清除已完成");
+    clearDoneButton->setObjectName("GhostButton");
     bottomRow->addWidget(deleteButton);
     bottomRow->addWidget(clearDoneButton);
     layout->addLayout(bottomRow);
@@ -392,6 +395,7 @@ QWidget *TodoWindow::createDetailPanel() {
     detailSaveButton->setObjectName("PrimaryButton");
     detailSaveButton->setMinimumHeight(44);
     detailToggleButton = new QPushButton("标记为已完成");
+    detailToggleButton->setObjectName("SecondaryButton");
     detailToggleButton->setMinimumHeight(42);
     layout->addWidget(detailSaveButton);
     layout->addWidget(detailToggleButton);
@@ -400,7 +404,7 @@ QWidget *TodoWindow::createDetailPanel() {
     descriptionTitle->setObjectName("PanelTitle");
     layout->addWidget(descriptionTitle);
     detailDescriptionLabel = new QLabel("选择任务后，这里会显示任务信息。你也可以双击左侧任务直接修改标题。");
-    detailDescriptionLabel->setObjectName("MutedText");
+    detailDescriptionLabel->setObjectName("DetailNote");
     detailDescriptionLabel->setWordWrap(true);
     layout->addWidget(detailDescriptionLabel);
 
@@ -510,6 +514,7 @@ QWidget *TodoWindow::createSchedulePanel() {
     layout->addLayout(titleRow);
 
     scheduleTable = new ScheduleTable();
+    scheduleTable->setObjectName("ScheduleGrid");
     scheduleTable->setRowCount(15);
     scheduleTable->setColumnCount(7);
     scheduleTable->setHorizontalHeaderLabels({"周一", "周二", "周三", "周四", "周五", "周六", "周日"});
@@ -519,8 +524,15 @@ QWidget *TodoWindow::createSchedulePanel() {
         hours << QString("%1:00").arg(hour, 2, 10, QLatin1Char('0'));
     }
     scheduleTable->setVerticalHeaderLabels(hours);
+    scheduleTable->setShowGrid(false);
+    scheduleTable->setFrameShape(QFrame::NoFrame);
+    scheduleTable->setCornerButtonEnabled(false);
+    scheduleTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scheduleTable->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     scheduleTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    scheduleTable->verticalHeader()->setDefaultSectionSize(34);
+    scheduleTable->horizontalHeader()->setMinimumHeight(46);
+    scheduleTable->verticalHeader()->setDefaultSectionSize(42);
+    scheduleTable->verticalHeader()->setMinimumWidth(66);
     scheduleTable->setSelectionMode(QAbstractItemView::SingleSelection);
     scheduleTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     scheduleTable->setAlternatingRowColors(false);
@@ -548,6 +560,8 @@ QWidget *TodoWindow::createCalendarPanel() {
     layout->addLayout(titleRow);
 
     studyCalendar = new StudyCalendarWidget();
+    studyCalendar->setObjectName("StudyCalendar");
+    studyCalendar->setMinimumHeight(310);
     studyCalendar->setSelectedDate(QDate::currentDate());
     layout->addWidget(studyCalendar, 1);
 
@@ -1281,8 +1295,8 @@ void TodoWindow::paintScheduleItem(int id, int startColumn, int endColumn, int t
             item->setText((row == top && column == startColumn) ? title : "");
             item->setToolTip(title);
             item->setData(Qt::UserRole, id);
-            item->setBackground(QColor("#dbeafe"));
-            item->setForeground(QColor("#17345f"));
+            item->setBackground(QColor("#e6efff"));
+            item->setForeground(QColor("#4050c8"));
         }
     }
 }
@@ -1430,21 +1444,23 @@ void TodoWindow::saveTasks() {
 void TodoWindow::applyStyle() {
     setStyleSheet(R"(
         QMainWindow {
-            background: #f7f8fc;
+            background: #f8faff;
         }
         QLabel {
             color: #1f2337;
         }
         #Sidebar {
-            background: #f5f7ff;
-            border-right: 1px solid #edf1fb;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #f3f6ff, stop:0.55 #f8faff, stop:1 #eef3ff);
+            border-right: 1px solid rgba(226, 232, 246, 150);
         }
         #Dashboard {
-            background: #fcfdff;
+            background: #fbfcff;
         }
         #DetailPanel {
-            background: #ffffff;
-            border-left: 1px solid #edf1f7;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #ffffff, stop:1 #f8faff);
+            border-left: 1px solid rgba(226, 232, 246, 180);
         }
         #Brand {
             color: #252844;
@@ -1452,30 +1468,31 @@ void TodoWindow::applyStyle() {
             font-weight: 800;
         }
         #NewTaskButton {
-            background: #5262f5;
-            border: 1px solid #5262f5;
-            border-radius: 9px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #6976ff, stop:1 #4657f1);
+            border: 1px solid rgba(83, 97, 236, 210);
+            border-radius: 13px;
             color: #ffffff;
             font-weight: 700;
-            padding: 14px 14px;
+            padding: 15px 16px;
             text-align: left;
         }
         #NewTaskButton:hover {
-            background: #4957e8;
+            background: #5362f4;
         }
         #NavButton, #NavActive {
             background: transparent;
             border: none;
-            border-radius: 10px;
+            border-radius: 13px;
             color: #586075;
-            padding: 10px 11px;
+            padding: 11px 12px;
             text-align: left;
         }
         #NavButton:hover {
-            background: #eef1ff;
+            background: rgba(238, 242, 255, 180);
         }
         #NavActive {
-            background: #eef2ff;
+            background: rgba(234, 239, 255, 220);
             color: #5262f5;
             font-weight: 700;
         }
@@ -1506,25 +1523,27 @@ void TodoWindow::applyStyle() {
             padding: 6px 11px;
         }
         #TopSummaryPill {
-            background: #f3f5ff;
-            border: 1px solid #dfe5fb;
-            border-radius: 18px;
+            background: #f4f6ff;
+            border: 1px solid #e2e7fb;
+            border-radius: 20px;
             min-width: 76px;
             min-height: 46px;
             qproperty-alignment: AlignCenter;
         }
         #Panel, #FocusPanel {
             background: #ffffff;
-            border: 1px solid rgba(232, 236, 247, 170);
-            border-radius: 14px;
+            border: 1px solid rgba(228, 234, 247, 190);
+            border-radius: 18px;
         }
         #FocusPanel {
-            background: #ffffff;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #ffffff, stop:1 #f8faff);
         }
         #MetricCard {
-            background: #ffffff;
-            border: 1px solid rgba(232, 236, 247, 160);
-            border-radius: 16px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #ffffff, stop:1 #fbfcff);
+            border: 1px solid rgba(226, 232, 246, 185);
+            border-radius: 18px;
         }
         #MetricTitle, #Filter {
             color: #8d94aa;
@@ -1553,10 +1572,19 @@ void TodoWindow::applyStyle() {
             color: #67708a;
             font-size: 13px;
         }
+        #DetailNote {
+            background: #fbfcff;
+            border: 1px solid #e8edf7;
+            border-radius: 14px;
+            color: #727b95;
+            font-size: 13px;
+            line-height: 150%;
+            padding: 12px;
+        }
         #DetailFieldRow {
-            background: #ffffff;
-            border: 1px solid #e8edf6;
-            border-radius: 12px;
+            background: #fbfcff;
+            border: 1px solid #e5ebf7;
+            border-radius: 14px;
         }
         #DetailFieldLabel {
             color: #8c94a9;
@@ -1575,13 +1603,13 @@ void TodoWindow::applyStyle() {
             color: #edf0f5;
         }
         #FocusTask {
-            background: #f6f8ff;
-            border: 1px solid #e3e7ff;
-            border-radius: 12px;
+            background: #f5f7ff;
+            border: 1px solid #e2e7ff;
+            border-radius: 14px;
             color: #5361c7;
             font-size: 13px;
             font-weight: 700;
-            padding: 9px;
+            padding: 10px;
         }
         #TimerLabel {
             color: #343958;
@@ -1589,9 +1617,9 @@ void TodoWindow::applyStyle() {
             font-weight: 800;
         }
         #StatsBox {
-            background: #f8f9fd;
-            border: 1px solid #edf0f5;
-            border-radius: 8px;
+            background: #f7f9ff;
+            border: 1px solid #ebeff8;
+            border-radius: 14px;
         }
         #StatValue {
             color: #454b70;
@@ -1599,7 +1627,7 @@ void TodoWindow::applyStyle() {
             font-weight: 800;
         }
         QSplitter::handle {
-            background: #edf0f5;
+            background: #eef2fb;
         }
         QSplitter::handle:horizontal {
             width: 7px;
@@ -1607,10 +1635,10 @@ void TodoWindow::applyStyle() {
         QSplitter::handle:vertical {
             height: 7px;
         }
-        QLineEdit, QSpinBox {
+        QLineEdit, QSpinBox, QDateEdit, QComboBox {
             background: #ffffff;
             border: 1px solid #e7ebf4;
-            border-radius: 9px;
+            border-radius: 12px;
             color: #343958;
             font-size: 13px;
             padding: 8px 10px;
@@ -1618,7 +1646,7 @@ void TodoWindow::applyStyle() {
         QLineEdit#SearchInput {
             background: #ffffff;
             border: 1px solid #e7ebf4;
-            border-radius: 12px;
+            border-radius: 13px;
             color: #343958;
             min-height: 28px;
             padding: 8px 14px;
@@ -1636,11 +1664,11 @@ void TodoWindow::applyStyle() {
             border: none;
             background: transparent;
         }
-        QComboBox#DetailCombo::drop-down {
+        QComboBox::drop-down, QComboBox#DetailCombo::drop-down {
             border: none;
             width: 34px;
         }
-        QComboBox#DetailCombo::down-arrow {
+        QComboBox::down-arrow, QComboBox#DetailCombo::down-arrow {
             image: none;
             width: 0;
             height: 0;
@@ -1649,26 +1677,28 @@ void TodoWindow::applyStyle() {
             border-top: 6px solid #7f879d;
             margin-right: 12px;
         }
+        QSpinBox::up-button, QSpinBox::down-button,
+        QDateEdit::up-button, QDateEdit::down-button,
         QSpinBox#DetailInput::up-button, QSpinBox#DetailInput::down-button,
         QDateEdit#DetailInput::up-button, QDateEdit#DetailInput::down-button {
             width: 0;
             border: none;
         }
-        QComboBox QAbstractItemView {
+        QComboBox QAbstractItemView, QDateEdit QAbstractItemView {
             background: #ffffff;
             border: 1px solid #e7ebf4;
-            border-radius: 10px;
+            border-radius: 12px;
             selection-background-color: #eef1ff;
             selection-color: #5262f5;
             padding: 6px;
         }
-        QLineEdit:focus, QSpinBox:focus {
+        QLineEdit:focus, QSpinBox:focus, QDateEdit:focus, QComboBox:focus {
             border-color: #8792f7;
         }
         QPushButton {
             background: #f8f9fe;
             border: 1px solid #e7ebf4;
-            border-radius: 9px;
+            border-radius: 12px;
             color: #596078;
             font-size: 13px;
             font-weight: 700;
@@ -1678,17 +1708,46 @@ void TodoWindow::applyStyle() {
             background: #eef1ff;
         }
         QPushButton#PrimaryButton {
-            background: #5262f5;
-            border-color: #5262f5;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #6472ff, stop:1 #4657ea);
+            border-color: #5361f2;
             color: #ffffff;
         }
         QPushButton#PrimaryButton:hover {
             background: #4657ea;
         }
+        QPushButton#SecondaryButton, QPushButton#GhostButton {
+            background: #f7f9ff;
+            border: 1px solid #e8edf7;
+            color: #65708b;
+        }
+        QPushButton#SecondaryButton:hover, QPushButton#GhostButton:hover {
+            background: #eef2ff;
+            color: #5262f5;
+        }
+        QPushButton#GhostButton {
+            padding: 7px 12px;
+        }
         QPushButton:disabled {
             background: #f7f8fb;
             border-color: #edf0f5;
             color: #b6bbca;
+        }
+        QMenu {
+            background: #ffffff;
+            border: 1px solid #e8edf6;
+            border-radius: 10px;
+            color: #343958;
+            padding: 7px;
+        }
+        QMenu::item {
+            background: transparent;
+            border-radius: 7px;
+            padding: 8px 26px 8px 12px;
+        }
+        QMenu::item:selected {
+            background: #f1f4ff;
+            color: #5262f5;
         }
         QListWidget, QTableWidget, QCalendarWidget {
             background: #ffffff;
@@ -1696,6 +1755,49 @@ void TodoWindow::applyStyle() {
             border-radius: 8px;
             color: #343958;
             font-size: 14px;
+        }
+        QTableWidget {
+            gridline-color: transparent;
+            outline: 0;
+        }
+        QTableWidget#ScheduleGrid {
+            background: #ffffff;
+            border: 1px solid #eef1f7;
+            border-radius: 12px;
+            padding: 0;
+            selection-background-color: #edf2ff;
+            selection-color: #4657ea;
+        }
+        QTableWidget#ScheduleGrid::item {
+            border: none;
+            border-right: 1px solid #edf0f5;
+            border-bottom: 1px solid #edf0f5;
+            padding: 7px 9px;
+        }
+        QTableWidget#ScheduleGrid::item:selected {
+            background: #f1f5ff;
+            color: #4657ea;
+        }
+        QTableWidget#ScheduleGrid QHeaderView::section {
+            background: #f8faff;
+            border: none;
+            border-right: 1px solid #edf0f5;
+            border-bottom: 1px solid #e7ebf4;
+            color: #77809d;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 8px 10px;
+        }
+        QTableWidget#ScheduleGrid QTableCornerButton::section {
+            background: #fbfcff;
+            border: none;
+            border-right: 1px solid #edf0f5;
+            border-bottom: 1px solid #edf0f5;
+        }
+        QCalendarWidget#StudyCalendar {
+            background: #ffffff;
+            border: none;
+            border-radius: 12px;
         }
         QListWidget {
             font-size: 15px;
@@ -1764,12 +1866,17 @@ void TodoWindow::applyStyle() {
         QCheckBox::indicator {
             width: 18px;
             height: 18px;
-            border-radius: 4px;
-            border: 1px solid #d6dceb;
+            border-radius: 5px;
+            border: 1px solid #cfd7eb;
             background: #fbfcff;
         }
+        QCheckBox::indicator:hover {
+            border: 1px solid #8b96f4;
+            background: #f2f5ff;
+        }
         QCheckBox::indicator:checked {
-            background: #5262f5;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #6b78ff, stop:1 #4d5ff0);
             border: 1px solid #5262f5;
             image: none;
         }

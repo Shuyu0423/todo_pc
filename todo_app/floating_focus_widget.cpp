@@ -6,88 +6,142 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScreen>
+#include <QGraphicsDropShadowEffect>
 #include <QVBoxLayout>
 
 FloatingFocusWidget::FloatingFocusWidget(QWidget *parent) : QWidget(parent) {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_TranslucentBackground);
-    setFixedSize(286, 118);
+    setFixedSize(218, 218);
+    setCursor(Qt::OpenHandCursor);
 
     auto *container = new QWidget(this);
     container->setObjectName("FloatingContainer");
     container->setGeometry(rect());
+    auto *shadow = new QGraphicsDropShadowEffect(container);
+    shadow->setBlurRadius(34);
+    shadow->setOffset(0, 12);
+    shadow->setColor(QColor(88, 96, 160, 48));
+    container->setGraphicsEffect(shadow);
 
     auto *layout = new QVBoxLayout(container);
-    layout->setContentsMargins(16, 12, 16, 12);
-    layout->setSpacing(6);
+    layout->setContentsMargins(18, 16, 18, 16);
+    layout->setSpacing(10);
 
     auto *header = new QHBoxLayout();
-    auto *caption = new QLabel("专注中");
+    header->setSpacing(8);
+    auto *caption = new QLabel("▮  专注中");
     caption->setObjectName("FloatingCaption");
     header->addWidget(caption);
     header->addStretch(1);
-    auto *restoreButton = new QPushButton("展开");
+    auto *restoreButton = new QPushButton("×");
     restoreButton->setObjectName("FloatingButton");
     header->addWidget(restoreButton);
     layout->addLayout(header);
 
     taskLabel = new QLabel("选择一个任务开始专注");
     taskLabel->setObjectName("FloatingTask");
+    taskLabel->setAlignment(Qt::AlignCenter);
+    taskLabel->setWordWrap(true);
     taskLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     layout->addWidget(taskLabel);
 
-    auto *timerRow = new QHBoxLayout();
     timeLabel = new QLabel("25:00");
     timeLabel->setObjectName("FloatingTimer");
-    timerRow->addWidget(timeLabel);
+    timeLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(timeLabel);
+
+    auto *state = new QLabel("专注模式");
+    state->setObjectName("FloatingState");
+    state->setAlignment(Qt::AlignCenter);
+    layout->addWidget(state);
+
+    auto *timerRow = new QHBoxLayout();
+    timerRow->setSpacing(14);
     timerRow->addStretch(1);
-    toggleButton = new QPushButton("开始");
+    auto *restoreMiniButton = new QPushButton("□");
+    restoreMiniButton->setObjectName("FloatingRoundButton");
+    timerRow->addWidget(restoreMiniButton);
+    toggleButton = new QPushButton("▶");
     toggleButton->setObjectName("FloatingPrimaryButton");
     timerRow->addWidget(toggleButton);
+    auto *resetHintButton = new QPushButton("↻");
+    resetHintButton->setObjectName("FloatingRoundButton");
+    timerRow->addWidget(resetHintButton);
     layout->addLayout(timerRow);
 
     setStyleSheet(R"(
         #FloatingContainer {
-            background: rgba(255, 255, 255, 172);
-            border: 1px solid rgba(226, 230, 244, 150);
-            border-radius: 18px;
+            background: rgba(255, 255, 255, 196);
+            border: 1px solid rgba(220, 225, 245, 170);
+            border-radius: 22px;
         }
         #FloatingCaption {
-            color: rgba(72, 78, 104, 210);
+            color: rgba(84, 96, 210, 230);
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
         }
         #FloatingTask {
-            color: rgba(34, 39, 61, 230);
-            font-size: 13px;
+            color: rgba(46, 52, 82, 230);
+            font-size: 12px;
             font-weight: 700;
         }
         #FloatingTimer {
-            color: rgba(55, 67, 210, 235);
-            font-size: 26px;
+            color: rgba(38, 43, 70, 238);
+            font-size: 38px;
             font-weight: 800;
         }
-        #FloatingButton, #FloatingPrimaryButton {
-            background: rgba(245, 247, 255, 150);
-            border: 1px solid rgba(225, 229, 251, 150);
-            border-radius: 9px;
-            color: rgba(69, 78, 168, 230);
+        #FloatingState {
+            background: rgba(230, 250, 240, 180);
+            border: 1px solid rgba(193, 237, 213, 160);
+            border-radius: 10px;
+            color: rgba(42, 157, 106, 235);
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+        }
+        #FloatingButton {
+            background: transparent;
+            border: none;
+            color: rgba(85, 93, 120, 220);
             font-size: 12px;
-            font-weight: 700;
-            padding: 5px 9px;
+            font-weight: 800;
+            min-width: 22px;
+            min-height: 22px;
+            padding: 0;
+        }
+        #FloatingRoundButton, #FloatingPrimaryButton {
+            background: rgba(248, 249, 255, 205);
+            border: 1px solid rgba(226, 231, 247, 190);
+            border-radius: 18px;
+            color: rgba(90, 99, 132, 235);
+            font-size: 15px;
+            font-weight: 800;
+            min-width: 36px;
+            min-height: 36px;
+            max-width: 36px;
+            max-height: 36px;
+            padding: 0;
         }
         #FloatingPrimaryButton {
-            background: rgba(88, 101, 242, 210);
-            border-color: rgba(88, 101, 242, 180);
+            background: rgba(88, 101, 242, 230);
+            border-color: rgba(88, 101, 242, 220);
             color: #ffffff;
+            font-size: 18px;
         }
     )");
 
     connect(restoreButton, &QPushButton::clicked, this, [this] {
         if (restoreHandler) restoreHandler();
     });
+    connect(restoreMiniButton, &QPushButton::clicked, this, [this] {
+        if (restoreHandler) restoreHandler();
+    });
     connect(toggleButton, &QPushButton::clicked, this, [this] {
         if (toggleHandler) toggleHandler();
+    });
+    connect(resetHintButton, &QPushButton::clicked, this, [this] {
+        if (resetHandler) resetHandler();
     });
 }
 
@@ -100,7 +154,7 @@ void FloatingFocusWidget::setTimeText(const QString &text) {
 }
 
 void FloatingFocusWidget::setRunning(bool running) {
-    toggleButton->setText(running ? "暂停" : "开始");
+    toggleButton->setText(running ? "Ⅱ" : "▶");
 }
 
 void FloatingFocusWidget::setRestoreHandler(std::function<void()> handler) {
@@ -109,6 +163,10 @@ void FloatingFocusWidget::setRestoreHandler(std::function<void()> handler) {
 
 void FloatingFocusWidget::setToggleHandler(std::function<void()> handler) {
     toggleHandler = std::move(handler);
+}
+
+void FloatingFocusWidget::setResetHandler(std::function<void()> handler) {
+    resetHandler = std::move(handler);
 }
 
 void FloatingFocusWidget::moveToScreenCorner() {
@@ -121,4 +179,34 @@ void FloatingFocusWidget::mouseDoubleClickEvent(QMouseEvent *event) {
         restoreHandler();
     }
     QWidget::mouseDoubleClickEvent(event);
+}
+
+void FloatingFocusWidget::mousePressEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton) {
+        dragging = true;
+        dragOffset = event->globalPosition().toPoint() - frameGeometry().topLeft();
+        setCursor(Qt::ClosedHandCursor);
+        event->accept();
+        return;
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void FloatingFocusWidget::mouseMoveEvent(QMouseEvent *event) {
+    if (dragging && (event->buttons() & Qt::LeftButton)) {
+        move(event->globalPosition().toPoint() - dragOffset);
+        event->accept();
+        return;
+    }
+    QWidget::mouseMoveEvent(event);
+}
+
+void FloatingFocusWidget::mouseReleaseEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton && dragging) {
+        dragging = false;
+        setCursor(Qt::OpenHandCursor);
+        event->accept();
+        return;
+    }
+    QWidget::mouseReleaseEvent(event);
 }
