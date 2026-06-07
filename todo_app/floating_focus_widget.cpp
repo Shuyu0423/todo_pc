@@ -48,37 +48,37 @@ FloatingFocusWidget::FloatingFocusWidget(QWidget *parent) : QWidget(parent) {
 
     setStyleSheet(R"(
         #FloatingContainer {
-            background: #ffffff;
-            border: 1px solid #e2e6f4;
-            border-radius: 16px;
+            background: rgba(255, 255, 255, 172);
+            border: 1px solid rgba(226, 230, 244, 150);
+            border-radius: 18px;
         }
         #FloatingCaption {
-            color: #7b839c;
+            color: rgba(72, 78, 104, 210);
             font-size: 12px;
             font-weight: 700;
         }
         #FloatingTask {
-            color: #343958;
+            color: rgba(34, 39, 61, 230);
             font-size: 13px;
             font-weight: 700;
         }
         #FloatingTimer {
-            color: #4e5de1;
+            color: rgba(55, 67, 210, 235);
             font-size: 26px;
             font-weight: 800;
         }
         #FloatingButton, #FloatingPrimaryButton {
-            background: #f5f7ff;
-            border: 1px solid #e1e5fb;
-            border-radius: 8px;
-            color: #5964ca;
+            background: rgba(245, 247, 255, 150);
+            border: 1px solid rgba(225, 229, 251, 150);
+            border-radius: 9px;
+            color: rgba(69, 78, 168, 230);
             font-size: 12px;
             font-weight: 700;
             padding: 5px 9px;
         }
         #FloatingPrimaryButton {
-            background: #5865f2;
-            border-color: #5865f2;
+            background: rgba(88, 101, 242, 210);
+            border-color: rgba(88, 101, 242, 180);
             color: #ffffff;
         }
     )");
