@@ -56,6 +56,8 @@ private:
     void updateStatus();
     void updateFocusTask();
     void updateTaskDetail();
+    void updateTaskRowWidget(QListWidgetItem *item);
+    void refreshTaskRows();
     void saveSelectedTaskDetail();
     void toggleSelectedTaskCompletion();
     void applyTaskFilter();

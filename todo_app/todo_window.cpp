@@ -5,6 +5,7 @@
 #include "study_calendar_widget.h"
 
 #include <QColor>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QCloseEvent>
 #include <QCoreApplication>
@@ -98,8 +99,17 @@ QWidget *TodoWindow::createSidebar() {
     sidebar->setObjectName("Sidebar");
     sidebar->setFixedWidth(238);
     auto *layout = new QVBoxLayout(sidebar);
-    layout->setContentsMargins(20, 24, 20, 20);
+    layout->setContentsMargins(22, 18, 18, 18);
     layout->setSpacing(10);
+
+    auto *windowDots = new QHBoxLayout();
+    for (const QString &color : {"#ff5f57", "#ffbd2e", "#28c840"}) {
+        auto *dot = new QLabel("●");
+        dot->setStyleSheet(QString("color: %1; font-size: 14px;").arg(color));
+        windowDots->addWidget(dot);
+    }
+    windowDots->addStretch(1);
+    layout->addLayout(windowDots);
 
     auto *brand = new QLabel("✓  TodoList");
     brand->setObjectName("Brand");
@@ -516,11 +526,12 @@ void TodoWindow::connectUi() {
         updateStatus();
         updateTaskDetail();
     });
-    connect(list, &QListWidget::itemChanged, this, [this](QListWidgetItem *) {
+    connect(list, &QListWidget::itemChanged, this, [this](QListWidgetItem *changedItem) {
         if (!loading) {
             updateFocusTask();
             updateStatus();
             updateTaskDetail();
+            updateTaskRowWidget(changedItem);
             saveTasks();
         }
     });
@@ -620,6 +631,7 @@ void TodoWindow::addTaskItem(const QString &text, bool completed, const QString 
     item->setData(CategoryRole, category);
     item->setData(DueDateRole, dueDate.toString(Qt::ISODate));
     item->setData(EstimateMinutesRole, estimateMinutes);
+    updateTaskRowWidget(item);
 }
 
 void TodoWindow::deleteSelectedTask() {
@@ -715,6 +727,60 @@ void TodoWindow::updateTaskDetail() {
         : "专注处理这个任务时，可以使用下方计时器；完成后在任务清单中勾选。");
 }
 
+void TodoWindow::updateTaskRowWidget(QListWidgetItem *item) {
+    if (!item || !list) return;
+
+    auto *row = new QWidget();
+    row->setObjectName("TaskRow");
+    auto *layout = new QHBoxLayout(row);
+    layout->setContentsMargins(12, 8, 12, 8);
+    layout->setSpacing(10);
+
+    auto *check = new QCheckBox();
+    check->setChecked(item->checkState() == Qt::Checked);
+    layout->addWidget(check);
+
+    auto *title = new QLabel(item->text());
+    title->setObjectName(item->checkState() == Qt::Checked ? "TaskTitleDone" : "TaskTitle");
+    title->setMinimumWidth(220);
+    layout->addWidget(title, 1);
+
+    const QDate dueDate = QDate::fromString(item->data(DueDateRole).toString(), Qt::ISODate);
+    const QString category = item->data(CategoryRole).toString();
+    const int estimate = item->data(EstimateMinutesRole).toInt();
+    const bool urgent = dueDate.isValid() && dueDate <= QDate::currentDate();
+
+    auto *priority = new QLabel(urgent ? "紧急" : "普通");
+    priority->setObjectName(urgent ? "ChipUrgent" : "ChipSoft");
+    layout->addWidget(priority);
+
+    auto *categoryChip = new QLabel(category.isEmpty() ? "学习" : category);
+    categoryChip->setObjectName(category == "工作" ? "ChipWork" : "ChipStudy");
+    layout->addWidget(categoryChip);
+
+    QString dueText = dueDate.isValid() ? dueDate.toString("M月d日") : "未定";
+    auto *time = new QLabel(QString("%1  %2分钟").arg(dueText).arg(estimate));
+    time->setObjectName("TaskTime");
+    layout->addWidget(time);
+
+    auto *star = new QLabel(urgent ? "★" : "☆");
+    star->setObjectName(urgent ? "StarOn" : "StarOff");
+    layout->addWidget(star);
+
+    item->setSizeHint(QSize(0, 54));
+    list->setItemWidget(item, row);
+
+    connect(check, &QCheckBox::toggled, this, [this, item](bool checked) {
+        item->setCheckState(checked ? Qt::Checked : Qt::Unchecked);
+    });
+}
+
+void TodoWindow::refreshTaskRows() {
+    for (int row = 0; row < list->count(); ++row) {
+        updateTaskRowWidget(list->item(row));
+    }
+}
+
 void TodoWindow::saveSelectedTaskDetail() {
     auto *item = list->currentItem();
     if (!item) return;
@@ -726,6 +792,7 @@ void TodoWindow::saveSelectedTaskDetail() {
     item->setData(CategoryRole, detailCategoryInput->currentText());
     item->setData(EstimateMinutesRole, detailEstimateInput->value());
     saveTasks();
+    updateTaskRowWidget(item);
     applyTaskFilter();
     updateTaskDetail();
     updateStatus();
@@ -1323,7 +1390,7 @@ void TodoWindow::applyStyle() {
             color: #24273a;
         }
         #Sidebar {
-            background: #f7f8fe;
+            background: #f4f6ff;
             border-right: 1px solid #edf0f8;
         }
         #Dashboard {
@@ -1394,16 +1461,16 @@ void TodoWindow::applyStyle() {
         }
         #Panel, #FocusPanel {
             background: #ffffff;
-            border: 1px solid #edf0f5;
-            border-radius: 10px;
+            border: 1px solid #eef1f8;
+            border-radius: 14px;
         }
         #FocusPanel {
             background: #ffffff;
         }
         #MetricCard {
             background: #ffffff;
-            border: 1px solid #edf0f5;
-            border-radius: 10px;
+            border: 1px solid #eef1f8;
+            border-radius: 14px;
         }
         #MetricTitle, #Filter {
             color: #8d94aa;
@@ -1522,13 +1589,68 @@ void TodoWindow::applyStyle() {
         QListWidget {
             font-size: 15px;
             padding: 6px;
+            border: none;
+            background: transparent;
         }
         QListWidget::item {
-            border-radius: 6px;
-            min-height: 36px;
-            padding: 7px;
+            border-radius: 10px;
+            min-height: 54px;
+            margin: 3px 0;
         }
-        QListWidget::item:selected, QTableWidget::item:selected {
+        QListWidget::item:selected {
+            background: transparent;
+        }
+        QWidget#TaskRow {
+            background: #ffffff;
+            border: 1px solid #eef1f8;
+            border-radius: 12px;
+        }
+        #TaskTitle {
+            color: #272b43;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        #TaskTitleDone {
+            color: #9aa1b6;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: line-through;
+        }
+        #TaskTime {
+            color: #8b93a8;
+            font-size: 12px;
+        }
+        #ChipUrgent, #ChipSoft, #ChipWork, #ChipStudy {
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        #ChipUrgent {
+            background: #fff1f2;
+            color: #ef476f;
+        }
+        #ChipSoft {
+            background: #f5f7ff;
+            color: #7b83a5;
+        }
+        #ChipWork {
+            background: #eef3ff;
+            color: #5865f2;
+        }
+        #ChipStudy {
+            background: #ecfbf4;
+            color: #25a36d;
+        }
+        #StarOn {
+            color: #ffbd2e;
+            font-size: 18px;
+        }
+        #StarOff {
+            color: #b7bdcc;
+            font-size: 18px;
+        }
+        QTableWidget::item:selected {
             background: #eef1ff;
             color: #4d59ca;
         }
