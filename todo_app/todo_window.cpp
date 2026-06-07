@@ -20,6 +20,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QIcon>
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -33,6 +34,8 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QSet>
+#include <QScrollArea>
+#include <QSize>
 #include <QSplitter>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -46,17 +49,46 @@
 #include <QWindowStateChangeEvent>
 
 #include <algorithm>
+#include <tuple>
 
 namespace {
 constexpr int CategoryRole = Qt::UserRole + 10;
 constexpr int DueDateRole = Qt::UserRole + 11;
 constexpr int EstimateMinutesRole = Qt::UserRole + 12;
+
+// Layout constants live here so you can tune the whole shell without hunting
+// through individual widgets. Keep sidebar + detail width modest to avoid
+// pushing the central dashboard outside smaller screens.
+constexpr int SidebarWidth = 248;
+constexpr int DetailPanelWidth = 336;
+constexpr int AppMinWidth = 1280;
+constexpr int AppMinHeight = 760;
+
+// Icons are bundled as Qt resources. To replace them with Alibaba Iconfont SVGs,
+// download the SVG from Iconfont and overwrite the matching file under
+// todo_app/assets/icons/; the resource path can stay unchanged.
+QIcon iconFromResource(const QString &name) {
+    return QIcon(QString(":/icons/%1.svg").arg(name));
+}
+
+QLabel *createIconLabel(const QString &name, int size = 18) {
+    auto *label = new QLabel();
+    label->setFixedSize(size, size);
+    label->setPixmap(iconFromResource(name).pixmap(size, size));
+    label->setScaledContents(true);
+    return label;
+}
+
+void applyIcon(QPushButton *button, const QString &name, int size = 18) {
+    button->setIcon(iconFromResource(name));
+    button->setIconSize(QSize(size, size));
+}
 }
 
 TodoWindow::TodoWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle("待办专注");
     resize(1520, 920);
-    setMinimumSize(1180, 700);
+    setMinimumSize(AppMinWidth, AppMinHeight);
 
     auto *root = new QWidget(this);
     auto *page = new QHBoxLayout(root);
@@ -108,7 +140,7 @@ void TodoWindow::closeEvent(QCloseEvent *event) {
 QWidget *TodoWindow::createSidebar() {
     auto *sidebar = new QFrame();
     sidebar->setObjectName("Sidebar");
-    sidebar->setFixedWidth(268);
+    sidebar->setFixedWidth(SidebarWidth);
     auto *layout = new QVBoxLayout(sidebar);
     layout->setContentsMargins(22, 18, 18, 18);
     layout->setSpacing(10);
@@ -122,21 +154,28 @@ QWidget *TodoWindow::createSidebar() {
     windowDots->addStretch(1);
     layout->addLayout(windowDots);
 
-    auto *brand = new QLabel("✓  TodoList");
+    auto *brandRow = new QHBoxLayout();
+    brandRow->setSpacing(10);
+    brandRow->addWidget(createIconLabel("app-check", 28));
+    auto *brand = new QLabel("TodoList");
     brand->setObjectName("Brand");
-    layout->addWidget(brand);
+    brandRow->addWidget(brand, 1);
+    layout->addLayout(brandRow);
     layout->addSpacing(16);
 
-    auto *newTask = new QPushButton("＋  新建任务");
+    auto *newTask = new QPushButton("+  新建任务");
     newTask->setObjectName("NewTaskButton");
+    applyIcon(newTask, "tasks", 18);
     connect(newTask, &QPushButton::clicked, this, [this] { taskInput->setFocus(); });
     layout->addWidget(newTask);
     layout->addSpacing(12);
 
-    const QStringList navItems = {"◉  今天", "□  明天", "▣  即将到来", "☷  全部任务", "▦  日历打卡"};
+    const QStringList navItems = {"今天", "明天", "即将到来", "全部任务", "日历打卡"};
+    const QStringList navIcons = {"today", "tomorrow", "upcoming", "tasks", "calendar"};
     for (int index = 0; index < navItems.size(); ++index) {
         auto *button = new QPushButton(navItems[index]);
         button->setObjectName(index == 0 ? "NavActive" : "NavButton");
+        applyIcon(button, navIcons[index], 18);
         layout->addWidget(button);
         if (index == 0) todayNavButton = button;
         if (index == 1) tomorrowNavButton = button;
@@ -148,34 +187,41 @@ QWidget *TodoWindow::createSidebar() {
     auto *listTitle = new QLabel("清单");
     listTitle->setObjectName("SidebarSection");
     layout->addWidget(listTitle);
-    const QList<QPair<QString, QLabel **>> categoryRows = {
-        {"●  工作", &workCountLabel},
-        {"●  学习", &studyCountLabel},
-        {"●  个人", &personalCountLabel},
-        {"●  购物清单", &shoppingCountLabel},
-        {"●  旅行计划", &travelCountLabel}
+    const QList<std::tuple<QString, QString, QLabel **>> categoryRows = {
+        {"work", "工作", &workCountLabel},
+        {"study", "学习", &studyCountLabel},
+        {"user", "个人", &personalCountLabel},
+        {"shopping", "购物清单", &shoppingCountLabel},
+        {"travel", "旅行计划", &travelCountLabel}
     };
     for (const auto &row : categoryRows) {
         auto *line = new QHBoxLayout();
-        auto *name = new QLabel(row.first);
+        line->setSpacing(9);
+        line->addWidget(createIconLabel(std::get<0>(row), 14));
+        auto *name = new QLabel(std::get<1>(row));
         name->setObjectName("SidebarList");
         auto *count = new QLabel("0");
         count->setObjectName("SidebarList");
         line->addWidget(name, 1);
         line->addWidget(count);
         layout->addLayout(line);
-        *row.second = count;
+        *std::get<2>(row) = count;
     }
 
     layout->addStretch(1);
-    auto *stats = new QLabel("⌁  统计");
-    stats->setObjectName("SidebarFooter");
-    auto *settings = new QLabel("⚙  设置");
-    settings->setObjectName("SidebarFooter");
-    layout->addWidget(stats);
-    layout->addWidget(settings);
+    auto addFooterRow = [&](const QString &icon, const QString &text) {
+        auto *row = new QHBoxLayout();
+        row->setSpacing(9);
+        row->addWidget(createIconLabel(icon, 17));
+        auto *label = new QLabel(text);
+        label->setObjectName("SidebarFooter");
+        row->addWidget(label, 1);
+        layout->addLayout(row);
+    };
+    addFooterRow("chart", "统计");
+    addFooterRow("settings", "设置");
     layout->addSpacing(12);
-    auto *profile = new QLabel("●  Cynthia                 ⌄");
+    auto *profile = new QLabel("Cynthia");
     profile->setObjectName("Profile");
     layout->addWidget(profile);
     return sidebar;
@@ -298,12 +344,12 @@ QWidget *TodoWindow::createDashboardPanel() {
     auto *dashboard = new QFrame();
     dashboard->setObjectName("Dashboard");
     auto *layout = new QVBoxLayout(dashboard);
-    layout->setContentsMargins(28, 22, 28, 22);
-    layout->setSpacing(16);
+    layout->setContentsMargins(24, 20, 20, 20);
+    layout->setSpacing(14);
 
     auto *header = new QHBoxLayout();
     auto *titleBlock = new QVBoxLayout();
-    auto *title = new QLabel("今天  ☀");
+    auto *title = new QLabel("今天");
     title->setObjectName("AppTitle");
     auto *subtitle = new QLabel(QDate::currentDate().toString("M月d日  dddd"));
     subtitle->setObjectName("Subtitle");
@@ -312,8 +358,8 @@ QWidget *TodoWindow::createDashboardPanel() {
     header->addLayout(titleBlock, 1);
     searchInput = new QLineEdit();
     searchInput->setObjectName("SearchInput");
-    searchInput->setPlaceholderText("⌕  搜索任务");
-    searchInput->setFixedWidth(270);
+    searchInput->setPlaceholderText("搜索任务");
+    searchInput->setFixedWidth(250);
     header->addWidget(searchInput);
     summaryLabel = new QLabel();
     summaryLabel->setObjectName("TopSummaryPill");
@@ -321,20 +367,20 @@ QWidget *TodoWindow::createDashboardPanel() {
     layout->addLayout(header);
 
     auto *metrics = new QHBoxLayout();
-    metrics->setSpacing(12);
+    metrics->setSpacing(10);
     metrics->addWidget(createMetricCard("今日进度", "0%", "0 / 0 已完成", "#5667f2"), 1);
     metrics->addWidget(createMetricCard("今日专注", "0.0 h", "0 分钟", "#26a47b"), 1);
     metrics->addWidget(createMetricCard("连续打卡", "0 天", "最佳记录 0 天", "#f29d49"), 1);
     metrics->addWidget(createMetricCard("预计用时", "0.0 h", "剩余 0 分钟", "#6574d9"), 1);
     layout->addLayout(metrics);
 
-    layout->addWidget(createTasksPanel(), 3);
+    layout->addWidget(createTasksPanel(), 2);
 
     auto *bottomSplitter = new QSplitter(Qt::Horizontal);
     bottomSplitter->setObjectName("BottomSplitter");
     bottomSplitter->addWidget(createCalendarPanel());
     bottomSplitter->addWidget(createSchedulePanel());
-    bottomSplitter->setSizes({430, 620});
+    bottomSplitter->setSizes({390, 610});
     bottomSplitter->setChildrenCollapsible(false);
     layout->addWidget(bottomSplitter, 3);
     return dashboard;
@@ -343,8 +389,21 @@ QWidget *TodoWindow::createDashboardPanel() {
 QWidget *TodoWindow::createDetailPanel() {
     auto *panel = new QFrame();
     panel->setObjectName("DetailPanel");
-    panel->setFixedWidth(356);
-    auto *layout = new QVBoxLayout(panel);
+    panel->setFixedWidth(DetailPanelWidth);
+    auto *outerLayout = new QVBoxLayout(panel);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setSpacing(0);
+
+    auto *scroll = new QScrollArea();
+    scroll->setObjectName("DetailScroll");
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setFrameShape(QFrame::NoFrame);
+    outerLayout->addWidget(scroll);
+
+    auto *content = new QWidget();
+    content->setObjectName("DetailContent");
+    auto *layout = new QVBoxLayout(content);
     layout->setContentsMargins(22, 24, 22, 20);
     layout->setSpacing(14);
 
@@ -357,7 +416,7 @@ QWidget *TodoWindow::createDetailPanel() {
     detailTitleLabel->setWordWrap(true);
     layout->addWidget(detailTitleLabel);
 
-    detailStatusLabel = new QLabel("□  未完成");
+    detailStatusLabel = new QLabel("未完成");
     detailStatusLabel->setObjectName("Tag");
     layout->addWidget(detailStatusLabel);
 
@@ -411,12 +470,14 @@ QWidget *TodoWindow::createDetailPanel() {
     layout->addSpacing(10);
     layout->addWidget(createFocusPanel());
     layout->addStretch(1);
+    scroll->setWidget(content);
     return panel;
 }
 
 QWidget *TodoWindow::createFocusPanel() {
     auto *panel = new QFrame();
     panel->setObjectName("FocusPanel");
+    panel->setMinimumHeight(296);
     applySoftShadow(panel, 22, 6, 14);
     auto *layout = new QVBoxLayout(panel);
     layout->setContentsMargins(16, 14, 16, 14);
@@ -428,6 +489,8 @@ QWidget *TodoWindow::createFocusPanel() {
 
     focusTaskLabel = new QLabel("选择一个任务开始专注");
     focusTaskLabel->setObjectName("FocusTask");
+    focusTaskLabel->setAlignment(Qt::AlignCenter);
+    focusTaskLabel->setMinimumHeight(42);
     focusTaskLabel->setWordWrap(true);
     layout->addWidget(focusTaskLabel);
 
@@ -510,6 +573,7 @@ QWidget *TodoWindow::createSchedulePanel() {
     titleRow->addWidget(panelTitle, 1);
     auto *hint = new QLabel("空白拖动新建；拖已有行程移动；Ctrl 拖复制；长按拖调整；右键删除");
     hint->setObjectName("MutedText");
+    hint->setWordWrap(true);
     titleRow->addWidget(hint);
     layout->addLayout(titleRow);
 
@@ -757,7 +821,7 @@ void TodoWindow::updateTaskDetail() {
     const auto *item = list->currentItem();
     if (!item) {
         detailTitleLabel->setText("选择一个任务");
-        detailStatusLabel->setText("□  未完成");
+        detailStatusLabel->setText("未完成");
         detailTitleInput->clear();
         detailDateInput->setDate(QDate::currentDate());
         detailCategoryInput->setCurrentText("学习");
@@ -770,7 +834,7 @@ void TodoWindow::updateTaskDetail() {
 
     detailTitleLabel->setText(item->text());
     const bool completed = item->checkState() == Qt::Checked;
-    detailStatusLabel->setText(completed ? "✓  已完成" : "□  未完成");
+    detailStatusLabel->setText(completed ? "已完成" : "未完成");
     detailTitleInput->setText(item->text());
     detailDateInput->setDate(QDate::fromString(item->data(DueDateRole).toString(), Qt::ISODate));
     detailCategoryInput->setCurrentText(item->data(CategoryRole).toString());
@@ -917,10 +981,10 @@ void TodoWindow::updateDashboardMetrics() {
     if (estimateMetricCaptionLabel) {
         estimateMetricCaptionLabel->setText(QString("剩余 %1 分钟").arg(remainingMinutes));
     }
-    if (todayNavButton) todayNavButton->setText(QString("◉  今天                 %1").arg(total));
-    if (tomorrowNavButton) tomorrowNavButton->setText(QString("□  明天                 %1").arg(tomorrowCount));
-    if (upcomingNavButton) upcomingNavButton->setText(QString("▣  即将到来          %1").arg(upcomingCount));
-    if (allNavButton) allNavButton->setText(QString("☷  全部任务          %1").arg(list->count()));
+    if (todayNavButton) todayNavButton->setText(QString("今天                 %1").arg(total));
+    if (tomorrowNavButton) tomorrowNavButton->setText(QString("明天                 %1").arg(tomorrowCount));
+    if (upcomingNavButton) upcomingNavButton->setText(QString("即将到来          %1").arg(upcomingCount));
+    if (allNavButton) allNavButton->setText(QString("全部任务          %1").arg(list->count()));
 
     int totalSeconds = 0;
     QSet<QDate> studiedDates;
@@ -1445,9 +1509,11 @@ void TodoWindow::applyStyle() {
     setStyleSheet(R"(
         QMainWindow {
             background: #f8faff;
+            font-family: "Microsoft YaHei UI", "Microsoft YaHei";
         }
         QLabel {
             color: #1f2337;
+            font-family: "Microsoft YaHei UI", "Microsoft YaHei";
         }
         #Sidebar {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -1461,6 +1527,10 @@ void TodoWindow::applyStyle() {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 #ffffff, stop:1 #f8faff);
             border-left: 1px solid rgba(226, 232, 246, 180);
+        }
+        #DetailScroll, #DetailContent {
+            background: transparent;
+            border: none;
         }
         #Brand {
             color: #252844;
@@ -1609,6 +1679,7 @@ void TodoWindow::applyStyle() {
             color: #5361c7;
             font-size: 13px;
             font-weight: 700;
+            min-height: 30px;
             padding: 10px;
         }
         #TimerLabel {
@@ -1620,6 +1691,7 @@ void TodoWindow::applyStyle() {
             background: #f7f9ff;
             border: 1px solid #ebeff8;
             border-radius: 14px;
+            min-height: 58px;
         }
         #StatValue {
             color: #454b70;
@@ -1635,11 +1707,28 @@ void TodoWindow::applyStyle() {
         QSplitter::handle:vertical {
             height: 7px;
         }
+        QScrollBar:vertical {
+            background: transparent;
+            width: 8px;
+            margin: 8px 2px 8px 0;
+        }
+        QScrollBar::handle:vertical {
+            background: rgba(190, 199, 222, 130);
+            border-radius: 4px;
+            min-height: 36px;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            border: none;
+            background: transparent;
+            height: 0;
+        }
         QLineEdit, QSpinBox, QDateEdit, QComboBox {
             background: #ffffff;
             border: 1px solid #e7ebf4;
             border-radius: 12px;
             color: #343958;
+            font-family: "Microsoft YaHei UI", "Microsoft YaHei";
             font-size: 13px;
             padding: 8px 10px;
         }
@@ -1700,6 +1789,7 @@ void TodoWindow::applyStyle() {
             border: 1px solid #e7ebf4;
             border-radius: 12px;
             color: #596078;
+            font-family: "Microsoft YaHei UI", "Microsoft YaHei";
             font-size: 13px;
             font-weight: 700;
             padding: 8px 11px;

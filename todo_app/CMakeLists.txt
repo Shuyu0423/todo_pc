@@ -13,6 +13,7 @@ qt_add_executable(todo_app
     floating_focus_widget.cpp
     floating_focus_widget.h
     main.cpp
+    resources.qrc
     schedule_table.cpp
     schedule_table.h
     study_calendar_widget.cpp

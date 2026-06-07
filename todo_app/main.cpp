@@ -1,11 +1,13 @@
 #include <QApplication>
 #include <QCoreApplication>
+#include <QFont>
 #include <QTimer>
 
 #include "todo_window.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
+    app.setFont(QFont("Microsoft YaHei UI", 10));
     QCoreApplication::setOrganizationName("Codex");
     QCoreApplication::setApplicationName("TodoList");
 

@@ -30,11 +30,11 @@ FloatingFocusWidget::FloatingFocusWidget(QWidget *parent) : QWidget(parent) {
 
     auto *header = new QHBoxLayout();
     header->setSpacing(8);
-    auto *caption = new QLabel("▮  专注中");
+    auto *caption = new QLabel("专注中");
     caption->setObjectName("FloatingCaption");
     header->addWidget(caption);
     header->addStretch(1);
-    auto *restoreButton = new QPushButton("×");
+    auto *restoreButton = new QPushButton("关");
     restoreButton->setObjectName("FloatingButton");
     header->addWidget(restoreButton);
     layout->addLayout(header);
@@ -59,41 +59,44 @@ FloatingFocusWidget::FloatingFocusWidget(QWidget *parent) : QWidget(parent) {
     auto *timerRow = new QHBoxLayout();
     timerRow->setSpacing(14);
     timerRow->addStretch(1);
-    auto *restoreMiniButton = new QPushButton("□");
+    auto *restoreMiniButton = new QPushButton("展");
     restoreMiniButton->setObjectName("FloatingRoundButton");
     timerRow->addWidget(restoreMiniButton);
-    toggleButton = new QPushButton("▶");
+    toggleButton = new QPushButton("开");
     toggleButton->setObjectName("FloatingPrimaryButton");
     timerRow->addWidget(toggleButton);
-    auto *resetHintButton = new QPushButton("↻");
+    auto *resetHintButton = new QPushButton("重");
     resetHintButton->setObjectName("FloatingRoundButton");
     timerRow->addWidget(resetHintButton);
     layout->addLayout(timerRow);
 
+    // Transparency knobs: the last rgba value is alpha (0-255).
+    // Lower values make the floating card more water-like; keep text alpha high
+    // so the timer remains readable over busy backgrounds.
     setStyleSheet(R"(
         #FloatingContainer {
-            background: rgba(255, 255, 255, 196);
-            border: 1px solid rgba(220, 225, 245, 170);
+            background: rgba(255, 255, 255, 58);
+            border: 1px solid rgba(220, 225, 245, 72);
             border-radius: 22px;
         }
         #FloatingCaption {
-            color: rgba(84, 96, 210, 230);
+            color: rgba(84, 96, 210, 238);
             font-size: 12px;
             font-weight: 800;
         }
         #FloatingTask {
-            color: rgba(46, 52, 82, 230);
+            color: rgba(46, 52, 82, 238);
             font-size: 12px;
             font-weight: 700;
         }
         #FloatingTimer {
-            color: rgba(38, 43, 70, 238);
+            color: rgba(38, 43, 70, 248);
             font-size: 38px;
             font-weight: 800;
         }
         #FloatingState {
-            background: rgba(230, 250, 240, 180);
-            border: 1px solid rgba(193, 237, 213, 160);
+            background: rgba(230, 250, 240, 54);
+            border: 1px solid rgba(193, 237, 213, 82);
             border-radius: 10px;
             color: rgba(42, 157, 106, 235);
             font-size: 11px;
@@ -104,18 +107,18 @@ FloatingFocusWidget::FloatingFocusWidget(QWidget *parent) : QWidget(parent) {
             background: transparent;
             border: none;
             color: rgba(85, 93, 120, 220);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             min-width: 22px;
             min-height: 22px;
             padding: 0;
         }
         #FloatingRoundButton, #FloatingPrimaryButton {
-            background: rgba(248, 249, 255, 205);
-            border: 1px solid rgba(226, 231, 247, 190);
+            background: rgba(248, 249, 255, 78);
+            border: 1px solid rgba(226, 231, 247, 86);
             border-radius: 18px;
             color: rgba(90, 99, 132, 235);
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 800;
             min-width: 36px;
             min-height: 36px;
@@ -124,10 +127,10 @@ FloatingFocusWidget::FloatingFocusWidget(QWidget *parent) : QWidget(parent) {
             padding: 0;
         }
         #FloatingPrimaryButton {
-            background: rgba(88, 101, 242, 230);
-            border-color: rgba(88, 101, 242, 220);
+            background: rgba(88, 101, 242, 150);
+            border-color: rgba(88, 101, 242, 118);
             color: #ffffff;
-            font-size: 18px;
+            font-size: 13px;
         }
     )");
 
@@ -154,7 +157,7 @@ void FloatingFocusWidget::setTimeText(const QString &text) {
 }
 
 void FloatingFocusWidget::setRunning(bool running) {
-    toggleButton->setText(running ? "Ⅱ" : "▶");
+    toggleButton->setText(running ? "停" : "开");
 }
 
 void FloatingFocusWidget::setRestoreHandler(std::function<void()> handler) {
