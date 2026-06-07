@@ -37,6 +37,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QSpinBox>
+#include <QAbstractSpinBox>
 #include <QStandardPaths>
 #include <QStyle>
 #include <QTableWidgetItem>
@@ -292,11 +293,12 @@ QWidget *TodoWindow::createDashboardPanel() {
     titleBlock->addWidget(subtitle);
     header->addLayout(titleBlock, 1);
     searchInput = new QLineEdit();
+    searchInput->setObjectName("SearchInput");
     searchInput->setPlaceholderText("⌕  搜索任务");
-    searchInput->setFixedWidth(230);
+    searchInput->setFixedWidth(270);
     header->addWidget(searchInput);
     summaryLabel = new QLabel();
-    summaryLabel->setObjectName("SummaryPill");
+    summaryLabel->setObjectName("TopSummaryPill");
     header->addWidget(summaryLabel);
     layout->addLayout(header);
 
@@ -347,22 +349,28 @@ QWidget *TodoWindow::createDetailPanel() {
     layout->addWidget(divider);
 
     detailTitleInput = new QLineEdit();
+    detailTitleInput->setObjectName("DetailInput");
     detailTitleInput->setPlaceholderText("任务标题");
     layout->addWidget(detailTitleInput);
 
     detailDateInput = new QDateEdit(QDate::currentDate());
+    detailDateInput->setObjectName("DetailInput");
     detailDateInput->setCalendarPopup(true);
     detailDateInput->setDisplayFormat("yyyy-MM-dd");
+    detailDateInput->setButtonSymbols(QAbstractSpinBox::NoButtons);
     layout->addWidget(detailDateInput);
 
     detailCategoryInput = new QComboBox();
+    detailCategoryInput->setObjectName("DetailCombo");
     detailCategoryInput->addItems({"工作", "学习", "个人", "购物清单", "旅行计划"});
     layout->addWidget(detailCategoryInput);
 
     detailEstimateInput = new QSpinBox();
+    detailEstimateInput->setObjectName("DetailInput");
     detailEstimateInput->setRange(1, 480);
     detailEstimateInput->setSingleStep(5);
     detailEstimateInput->setSuffix(" 分钟");
+    detailEstimateInput->setButtonSymbols(QAbstractSpinBox::NoButtons);
     layout->addWidget(detailEstimateInput);
 
     detailSaveButton = new QPushButton("保存任务详情");
@@ -418,9 +426,11 @@ QWidget *TodoWindow::createFocusPanel() {
     durationLabel->setObjectName("MutedText");
     durationRow->addWidget(durationLabel);
     minutesInput = new QSpinBox();
+    minutesInput->setObjectName("DetailInput");
     minutesInput->setRange(1, 120);
     minutesInput->setSingleStep(1);
     minutesInput->setValue(25);
+    minutesInput->setButtonSymbols(QAbstractSpinBox::NoButtons);
     durationRow->addWidget(minutesInput, 1);
     layout->addLayout(durationRow);
 
@@ -1470,13 +1480,21 @@ void TodoWindow::applyStyle() {
             color: #969caf;
             font-size: 13px;
         }
-        #SummaryPill {
+        #SummaryPill, #TopSummaryPill {
             background: #f5f7ff;
             border: 1px solid #e4e8fb;
             border-radius: 14px;
             color: #5964ca;
             font-weight: 700;
             padding: 6px 11px;
+        }
+        #TopSummaryPill {
+            background: #f3f5ff;
+            border: 1px solid #dfe5fb;
+            border-radius: 18px;
+            min-width: 76px;
+            min-height: 46px;
+            qproperty-alignment: AlignCenter;
         }
         #Panel, #FocusPanel {
             background: #ffffff;
@@ -1569,6 +1587,53 @@ void TodoWindow::applyStyle() {
             color: #343958;
             font-size: 13px;
             padding: 8px 10px;
+        }
+        QLineEdit#SearchInput {
+            background: #ffffff;
+            border: 1px solid #e7ebf4;
+            border-radius: 12px;
+            color: #343958;
+            min-height: 28px;
+            padding: 8px 14px;
+        }
+        QLineEdit#DetailInput, QSpinBox#DetailInput, QDateEdit#DetailInput, QComboBox#DetailCombo {
+            background: #ffffff;
+            border: 1px solid #e5eaf5;
+            border-radius: 11px;
+            color: #232842;
+            font-size: 14px;
+            min-height: 32px;
+            padding: 7px 14px;
+        }
+        QLineEdit#DetailInput:focus, QSpinBox#DetailInput:focus, QDateEdit#DetailInput:focus, QComboBox#DetailCombo:focus {
+            border: 1px solid #9aa4ff;
+            background: #fbfcff;
+        }
+        QComboBox#DetailCombo::drop-down {
+            border: none;
+            width: 34px;
+        }
+        QComboBox#DetailCombo::down-arrow {
+            image: none;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #7f879d;
+            margin-right: 12px;
+        }
+        QSpinBox#DetailInput::up-button, QSpinBox#DetailInput::down-button,
+        QDateEdit#DetailInput::up-button, QDateEdit#DetailInput::down-button {
+            width: 0;
+            border: none;
+        }
+        QComboBox QAbstractItemView {
+            background: #ffffff;
+            border: 1px solid #e7ebf4;
+            border-radius: 10px;
+            selection-background-color: #eef1ff;
+            selection-color: #5262f5;
+            padding: 6px;
         }
         QLineEdit:focus, QSpinBox:focus {
             border-color: #8792f7;
